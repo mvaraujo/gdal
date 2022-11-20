@@ -1,0 +1,32 @@
+version: "3.1"
+services:
+  gdal:
+    build: .
+    environment:
+      APP_ENV: docker
+    ports:
+      - "80:80"
+    volumes:
+      - "./Python:/home/gdal/Python"
+      - "./Assets:/home/gdal/Assets"
+      - "./.jupyter:/home/gdal/.jupyter"
+    links:
+      - db
+    networks:
+      - default
+  db:
+    image: mysql:5.7
+    ports:
+      - "3306:3306"
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: gdal
+      MYSQL_ROOT_PASSWORD: gdal
+    volumes:
+      - ./docker-container/dump:/docker-entrypoint-initdb.d
+      - ./docker-container/conf:/etc/mysql/conf.d
+      - mysql-data:/var/lib/mysql
+    networks:
+      - default
+volumes:
+  mysql-data:
