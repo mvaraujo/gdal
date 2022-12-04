@@ -18,6 +18,9 @@ RUN apt-get install -y pip ipython3
 # Install MySQL Client
 RUN apt-get install -y libmysqlclient-dev
 
+# Enable widgetsnbextension
+RUN jupyter nbextension enable --py --sys-prefix widgetsnbextension
+
 # Create gdal user
 RUN \
     useradd -rm -d /home/gdal -s /bin/bash -g root -G sudo gdal && \
@@ -27,7 +30,9 @@ WORKDIR /home/gdal/Python
 
 # Install jupyter-lab
 ENV PATH="${PATH}:/home/gdal/.local/bin"
-RUN pip install jupyterlab sqlalchemy mysqlclient pandas
+RUN pip install jupyterlab sqlalchemy mysqlclient pandas dbfread
+
+RUN pip install tqdm
 
 EXPOSE 8888
 
