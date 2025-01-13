@@ -1,39 +1,66 @@
-FROM osgeo/gdal
+FROM ghcr.io/osgeo/gdal:alpine-small-latest
 
-# apt update
-RUN apt-get update
-
-# Install jupyter
-RUN echo $'2\n134' | apt-get install -y jupyter
-# The stdin carries as input for dpkg-reconfigure tzdata:
-#   2 - Americas
-#   134 - Sao_Paulo
+# Set frontend to noninteractive to bypass prompts
+# Added 2023/12/27
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install Utils
-RUN apt-get install -y sudo net-tools iputils-ping telnet
+RUN \
+    apk add --no-cache \
+        sudo \
+        net-tools \
+        iputils-ping \
+        inetutils-telnet \
+        py3-pip
 
-# Install pip and ipython
-RUN apt-get install -y pip ipython3
+# Install Development Tools
+RUN \
+    apk add --no-cache \
+        py3-mysqlclient \
+        gcc \
+        python3-dev \
+        musl-dev \
+        linux-headers
 
-# Install MySQL Client
-RUN apt-get install -y libmysqlclient-dev
-
-# Enable widgetsnbextension
-RUN jupyter nbextension enable --py --sys-prefix widgetsnbextension
+RUN \
+    apk add --no-cache \
+        g++        
 
 # Create gdal user
 RUN \
-    useradd -rm -d /home/gdal -s /bin/bash -g root -G sudo gdal && \
-    echo "gdal:gdal" | chpasswd
+    adduser -D -h /home/gdal -s /bin/sh gdal && \
+    echo "gdal:gdal" | chpasswd && \
+    addgroup gdal wheel || true
+
+# Allow wheel group to sudo without password
+RUN echo '%wheel ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
 USER gdal
-WORKDIR /home/gdal/Python
+WORKDIR /home/gdal
 
-# Install jupyter-lab
-ENV PATH="${PATH}:/home/gdal/.local/bin"
-RUN pip install jupyterlab sqlalchemy mysqlclient pandas dbfread
+# Create and activate venv
+RUN python3 -m venv /home/gdal/.venv
 
-RUN pip install tqdm
+# Make sure all future commands use the venv's python/pip
+ENV PATH="/home/gdal/.venv/bin:$PATH"
 
-EXPOSE 8888
+# Install jupyter
+RUN \
+    pip install \
+        jupyter \
+        tqdm
 
+# Install pandas, sqlalchemy, dbfread
+RUN \
+    pip install \
+        sqlalchemy \
+        pandas \
+        dbfread \
+        pymysql
+
+# Install gdal
+RUN pip install gdal
+
+# Run jupyter lab
+EXPOSE 80
 ENTRYPOINT ["bash", "-c", "jupyter lab --port=80 --no-browser --ip=0.0.0.0 --config=/home/gdal/.jupyter/jupyter_lab_config.py"]
